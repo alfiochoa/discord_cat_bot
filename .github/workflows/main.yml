@@ -1,26 +1,57 @@
-name: Daily Cat Bot 🐱
+name: Daily Random Breed Cat 🐱
 
 on:
   schedule:
-    - cron: "0 20 * * *"   # once per day (8PM UTC)
-  workflow_dispatch:      # manual trigger
+    - cron: "0 20 * * *"   # once per day (UTC)
+  workflow_dispatch:
 
 jobs:
   post-cat:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch a cat image
+      - name: Pick a random breed
         run: |
-          curl -s https://api.thecatapi.com/v1/images/search \
-          -H "x-api-key: $CAT_API_KEY" > cat.json
-          echo "CAT_URL=$(jq -r '.[0].url' cat.json)" >> $GITHUB_ENV
+          curl -s "https://api.thecatapi.com/v1/breeds" \
+            -H "x-api-key: $CAT_API_KEY" > breeds.json
+
+          COUNT=$(jq length breeds.json)
+          INDEX=$((RANDOM % COUNT))
+
+          BREED_ID=$(jq -r ".[$INDEX].id" breeds.json)
+          BREED_NAME=$(jq -r ".[$INDEX].name" breeds.json)
+          BREED_ORIGIN=$(jq -r ".[$INDEX].origin" breeds.json)
+          BREED_TEMPERAMENT=$(jq -r ".[$INDEX].temperament" breeds.json)
+          BREED_LIFE=$(jq -r ".[$INDEX].life_span" breeds.json)
+
+          echo "BREED_ID=$BREED_ID" >> $GITHUB_ENV
+          echo "BREED_NAME=$BREED_NAME" >> $GITHUB_ENV
+          echo "BREED_ORIGIN=$BREED_ORIGIN" >> $GITHUB_ENV
+          echo "BREED_TEMPERAMENT=$BREED_TEMPERAMENT" >> $GITHUB_ENV
+          echo "BREED_LIFE=$BREED_LIFE" >> $GITHUB_ENV
+        env:
+          CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
+
+      - name: Fetch cat image for breed
+        run: |
+          curl -s "https://api.thecatapi.com/v1/images/search?breed_ids=$BREED_ID" \
+            -H "x-api-key: $CAT_API_KEY" > cat.json
+
+          CAT_URL=$(jq -r '.[0].url' cat.json)
+          echo "CAT_URL=$CAT_URL" >> $GITHUB_ENV
         env:
           CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
 
       - name: Post to Discord
         run: |
+          FUN_FACT="This breed originates from $BREED_ORIGIN and typically lives $BREED_LIFE years."
+
           curl -X POST "$DISCORD_WEBHOOK" \
             -H "Content-Type: application/json" \
-            -d "{\"content\":\"El gato de hoy🐱!\",\"embeds\":[{\"image\":{\"url\":\"$CAT_URL\"}}]}"
+            -d "{
+              \"content\": \"🐱 **Today’s Cat: $BREED_NAME**\n🧠 *Fun fact:* $FUN_FACT\n😺 Temperament: $BREED_TEMPERAMENT\",
+              \"embeds\": [{
+                \"image\": { \"url\": \"$CAT_URL\" }
+              }]
+            }"
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
