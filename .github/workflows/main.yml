@@ -1,0 +1,26 @@
+name: Daily Cat Bot 🐱
+
+on:
+  schedule:
+    - cron: "0 12 * * *"   # once per day (UTC)
+  workflow_dispatch:      # manual trigger
+
+jobs:
+  post-cat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch a cat image
+        run: |
+          curl -s https://api.thecatapi.com/v1/images/search \
+          -H "x-api-key: $CAT_API_KEY" > cat.json
+          echo "CAT_URL=$(jq -r '.[0].url' cat.json)" >> $GITHUB_ENV
+        env:
+          CAT_API_KEY: ${{ secrets.CAT_API_KEY }}
+
+      - name: Post to Discord
+        run: |
+          curl -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\":\"🐱 Here is your cat!\",\"embeds\":[{\"image\":{\"url\":\"$CAT_URL\"}}]}"
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
