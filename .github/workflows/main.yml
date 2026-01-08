@@ -2,7 +2,7 @@ name: Daily Cat Bot 🐱
 
 on:
   schedule:
-    - cron: "0 12 * * *"   # once per day (UTC)
+    - cron: "0 20 * * *"   # once per day (8PM UTC)
   workflow_dispatch:      # manual trigger
 
 jobs:
@@ -21,6 +21,6 @@ jobs:
         run: |
           curl -X POST "$DISCORD_WEBHOOK" \
             -H "Content-Type: application/json" \
-            -d "{\"content\":\"🐱 Here is your cat!\",\"embeds\":[{\"image\":{\"url\":\"$CAT_URL\"}}]}"
+            -d "{\"content\":\"El gato de hoy🐱!\",\"embeds\":[{\"image\":{\"url\":\"$CAT_URL\"}}]}"
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
